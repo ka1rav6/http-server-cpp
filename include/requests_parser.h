@@ -7,6 +7,8 @@
 struct Message{
     std::string type;
     std::string file;
+    std::string host;
+    std::string Connection;
 };
 
 Message* parse(std::string msg);
