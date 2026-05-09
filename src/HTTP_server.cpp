@@ -1,114 +1,182 @@
-// IO 
+// IO
 #include <fstream>
 #include <iostream>
 #include <cerrno>
 
-// for socket
+// sockets
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <cstring>
 #include <unistd.h>
 
-// Definitions
-#define BUF_SIZE 4096 // 2^12
+#define BUF_SIZE 4096
 
-//IO functions
-
-void log(std::string msg){
-    using namespace std;
-    ofstream logger("error_logs.txt");
-    logger << msg << std::endl;
-    logger << "Error Code: " << errno << endl;
-    cout << "Error logged! \n";
+void log(const std::string& msg){
+    std::ofstream logger("error_logs.txt", std::ios::app);
+    logger << msg << '\n';
+    logger << "Error Code: " << errno << '\n';
+    logger << "-------------------\n";
+    std::cout << "Error logged!\n";
 }
 
 class Server{
     private:
         int fd;
         struct sockaddr_in addr;
+
         void createSocket(){
             this->fd = socket(AF_INET, SOCK_STREAM, 0);
-            if (this->fd == -1){
-                log("Socket Initialzation Failed");
+
+            if (this->fd < 0){
+                log("Socket Creation Failed");
+                exit(EXIT_FAILURE);
             }
         }
+
         void configureSocket(){
+            memset(&this->addr, 0, sizeof(this->addr));
+
             this->addr.sin_family = AF_INET;
             this->addr.sin_port = htons(8080);
-            this->addr.sin_addr.s_addr = INADDR_ANY;
+            this->addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+            int opt = 1;
+
+            if (
+                setsockopt(
+                    this->fd,
+                    SOL_SOCKET,
+                    SO_REUSEADDR,
+                    &opt,
+                    sizeof(opt)
+                ) < 0
+            ){
+                log("setsockopt Failed");
+                exit(EXIT_FAILURE);
+            }
         }
+
         void bindSocket(){
-            if (::bind(this->fd, 
-                (const struct sockaddr *)(&this->addr),
-                sizeof(this->addr)))
-                    log("Binding Failure");
+            if (
+                ::bind(
+                    this->fd,
+                    reinterpret_cast<sockaddr*>(&this->addr),
+                    sizeof(this->addr)
+                ) < 0
+            ){
+                log("Bind Failed");
+                exit(EXIT_FAILURE);
+            }
         }
+
     public:
-        int get_fd(){
-            return this->fd;
-        }
-        struct sockaddr_in get_addr(){
-            return this->addr;
-        }
         void init(){
             this->createSocket();
             this->configureSocket();
             this->bindSocket();
         }
+
         void listen(int backlog){
-            if (::listen(this->fd, backlog) <0)
-                log("Unable to Listen");
-        }
-        void read(int client_fd, char* buffer){
-            int bytes = ::read(client_fd, buffer, BUF_SIZE - 1);
-            if (bytes > 0){
-                // The HTTP REQUEST COMES HERE
-                buffer[bytes] = '\0';
-                std::cout << "Client says: " << buffer << '\n';
-                send(client_fd, "OK", 2, 0);
+            if (::listen(this->fd, backlog) < 0){
+                log("Listen Failed");
+                exit(EXIT_FAILURE);
             }
-            else if (bytes == 0)
-                log("Client has been disconnected");
-            else
-                log("Read Failed");
         }
+
+        int get_fd(){
+            return this->fd;
+        }
+    void handleClient(int client_fd, char* buffer){
+    ssize_t bytes = recv(
+        client_fd,
+        buffer,
+        BUF_SIZE - 1,
+        0
+    );
+
+    if (bytes <= 0){
+        std::cout << "recv failed\n";
+        return;
+    }
+
+    buffer[bytes] = '\0';
+
+    std::cout << "REQUEST:\n";
+    std::cout << buffer << '\n';
+
+    std::string response =
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: text/plain\r\n"
+        "Content-Length: 11\r\n"
+        "Connection: close\r\n"
+        "\r\n"
+        "Hello World";
+
+    ssize_t sent = send(
+        client_fd,
+        response.c_str(),
+        response.size(),
+        0
+    );
+
+    std::cout << "BYTES SENT: "
+              << sent
+              << '\n';
+}
 };
 
 class Client{
     private:
         int fd;
         struct sockaddr_in addr;
+        socklen_t len;
+
     public:
-        socklen_t len = sizeof(this->addr);
+        Client(){
+            memset(&this->addr, 0, sizeof(this->addr));
+            this->len = sizeof(this->addr);
+        }
+        void connectToServer(int server_fd){
+            this->fd = ::accept(
+                server_fd,
+                reinterpret_cast<sockaddr*>(&this->addr),
+                &this->len
+            );
+            if (this->fd < 0){
+                log("Accept Failed");
+            }
+        }
         int get_fd(){
             return this->fd;
         }
-        struct sockaddr_in get_addr(){
-            return this->addr;
-        }
-        void accept(int server_fd){
-            this->fd = ::accept(server_fd, reinterpret_cast<struct sockaddr*> (&this->addr), 
-                    &(this->len));
-            if (this->fd < 0)
-                log("Accepting Failed");
-        }
 };
 
-int main(void){
-    Server s;
-    s.init();
-    s.listen(5);
-    std::cout << "Server is listening on port 8080....\n";
-    Client c;
+int main(){
+    Server server;
+
+    server.init();
+    server.listen(5);
+
+    std::cout << "Server listening on port 8080...\n";
+
     char* buffer = new char[BUF_SIZE];
 
     while (true){
-        c.accept(s.get_fd());
-        s.read(c.get_fd(), buffer);
-        
-        close(c.get_fd());
+        Client client;
+
+        client.connectToServer(server.get_fd());
+
+        server.handleClient(
+            client.get_fd(),
+            buffer
+        );
+
+        close(client.get_fd());
     }
+
     delete[] buffer;
-    close(s.get_fd());
+
+    close(server.get_fd());
+
     return 0;
 }

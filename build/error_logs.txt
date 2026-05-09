@@ -1,2 +1,5 @@
 Client has been disconnected
 Error Code: 0
+Bind Failed
+Error Code: 98
+-------------------
