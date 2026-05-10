@@ -13,6 +13,9 @@
 #include "../include/requests_parser.h"
 
 #define BUF_SIZE 4096
+// main text map:
+
+
 
 void log(const std::string& msg){
     std::ofstream logger("error_logs.txt", std::ios::app);
@@ -99,7 +102,6 @@ class Server{
     if (!client_request){
         std::cout << "Request Parsing Failiure\n";
         return;
-
     }
     std::string response= 
         "HTTP/1.1 400 Bad Request\r\n"
@@ -108,7 +110,6 @@ class Server{
         "Connection: close\r\n"
         "\r\n"
         "DEFAULT";
-
 
     if (client_request->file == "/" && client_request->type == "GET"){
         std::string body = "Hi. This is a server!";
