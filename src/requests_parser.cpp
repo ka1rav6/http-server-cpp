@@ -1,32 +1,24 @@
 #include "../include/requests_parser.h"
+#include <sstream>
 
-Message* parse(std::string msg){
+
+Message* parse(const std::string& msg){
     Message* final = new Message;
-    final->type = "";
-    final->host = "";
-    final->Connection = "";
-    final->file = "";
-    int i =0;
-    while (msg.at(i) != ' ' && i < msg.size())
-        final->type += msg.at(i++);
-    i++;
-    while (msg.at(i) != ' ' && i < msg.size())
-        final->file += msg.at(i);
-    i++;
-    while (msg.at(i) != ' ' && i < msg.size())
-        i++;
-    i++;
-    while (msg.at(i) != '\r' && i < msg.size())
-        final->host += msg.at(i++);
-    while (msg.at(i) != ' ' && i < msg.size())
-        i++;
-    i++;
-    while (msg.at(i) != '\r' && i < msg.size())
-        final->Connection += msg.at(i++);
-
-    // Nothing else is needed to be noted but can be stored using the same method
+    std::stringstream ss(msg);
+    ss >> final->type;
+    ss >> final->file;
+    std::string line;
+    while (std::getline(ss, line)){
+        if (line.find("Host: ") == 0){
+            final->host = line.substr(6);
+        }
+        else if (line.find("Connection: ") == 0){
+            final->Connection = line.substr(12);
+        }
+    }
     return final;
-};
+}
+
 void destroy(Message* msg){
     delete msg;
 }

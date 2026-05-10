@@ -11,7 +11,7 @@ struct Message{
     std::string Connection;
 };
 
-Message* parse(std::string msg);
+Message* parse(const std::string& msg);
 void destroy(Message* msg);
 
 #endif
