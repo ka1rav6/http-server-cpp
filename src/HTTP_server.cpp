@@ -9,6 +9,9 @@
 #include <cstring>
 #include <unistd.h>
 
+// CUSTOM HEADERS
+#include "../include/requests_parser.h"
+
 #define BUF_SIZE 4096
 
 void log(const std::string& msg){
@@ -26,7 +29,6 @@ class Server{
 
         void createSocket(){
             this->fd = socket(AF_INET, SOCK_STREAM, 0);
-
             if (this->fd < 0){
                 log("Socket Creation Failed");
                 exit(EXIT_FAILURE);
@@ -35,13 +37,10 @@ class Server{
 
         void configureSocket(){
             memset(&this->addr, 0, sizeof(this->addr));
-
             this->addr.sin_family = AF_INET;
             this->addr.sin_port = htons(8080);
             this->addr.sin_addr.s_addr = htonl(INADDR_ANY);
-
             int opt = 1;
-
             if (
                 setsockopt(
                     this->fd,
@@ -55,7 +54,6 @@ class Server{
                 exit(EXIT_FAILURE);
             }
         }
-
         void bindSocket(){
             if (
                 ::bind(
@@ -68,21 +66,18 @@ class Server{
                 exit(EXIT_FAILURE);
             }
         }
-
     public:
         void init(){
             this->createSocket();
             this->configureSocket();
             this->bindSocket();
         }
-
         void listen(int backlog){
             if (::listen(this->fd, backlog) < 0){
                 log("Listen Failed");
                 exit(EXIT_FAILURE);
             }
         }
-
         int get_fd(){
             return this->fd;
         }
@@ -93,25 +88,49 @@ class Server{
         BUF_SIZE - 1,
         0
     );
-
     if (bytes <= 0){
         std::cout << "recv failed\n";
         return;
     }
-
     buffer[bytes] = '\0';
-
     std::cout << "REQUEST:\n";
     std::cout << buffer << '\n';
+    Message* client_request = parse(buffer);
+    if (!client_request){
+        std::cout << "Request Parsing Failiure\n";
+        return;
 
-    std::string response =
-        "HTTP/1.1 200 OK\r\n"
+    }
+    std::string response= 
+        "HTTP/1.1 400 Bad Request\r\n"
         "Content-Type: text/plain\r\n"
-        "Content-Length: 11\r\n"
+        "Content-Length: 7\r\n"
         "Connection: close\r\n"
         "\r\n"
-        "Hello World";
+        "DEFAULT";
 
+
+    if (client_request->file == "/" && client_request->type == "GET"){
+        std::string body = "Hi. This is a server!";
+
+        response =
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: text/plain\r\n"
+            "Content-Length: "+ std::to_string(body.size()) + "\r\n"
+            "Connection: close\r\n"
+            "\r\n"+
+            body;
+    }
+    if (client_request->file != "/" && client_request->type == "GET"){
+        std::string body = "Could not find what you were looking for";
+        response = 
+            "HTTP/1.1 404 Not Found\r\n"
+            "Content-Type: text/plain\r\n"
+            "Content-Length: "+ std::to_string(body.size()) + "\r\n"
+            "\r\n" +
+            body;
+            
+    }
     ssize_t sent = send(
         client_fd,
         response.c_str(),
@@ -122,6 +141,7 @@ class Server{
     std::cout << "BYTES SENT: "
               << sent
               << '\n';
+    delete client_request;
 }
 };
 
