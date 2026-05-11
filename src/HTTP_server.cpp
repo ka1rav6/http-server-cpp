@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 #include <cerrno>
+#include <thread>
 
 // sockets
 #include <sys/socket.h>
@@ -14,10 +15,6 @@
 #include "../include/response_gen.h"
 
 #define BUF_SIZE 4096
-// main text map:
-
-
-
 void log(const std::string& msg){
     std::ofstream logger("error_logs.txt", std::ios::app);
     logger << msg << '\n';
@@ -126,47 +123,50 @@ class Server{
 }
 };
 
-class Client{
-    private:
-        int fd;
-        struct sockaddr_in addr;
-        socklen_t len;
-    public:
-        Client(){
-            memset(&this->addr, 0, sizeof(this->addr));
-            this->len = sizeof(this->addr);
-        }
-        void connectToServer(int server_fd){
-            this->fd = ::accept(
-                server_fd,
-                reinterpret_cast<sockaddr*>(&this->addr),
-                &this->len
-            );
-            if (this->fd < 0){
-                log("Accept Failed");
-            }
-        }
-        int get_fd(){
-            return this->fd;
-        }
-};
-
 int main(){
     Server server;
     server.init();
     server.listen(5);
     std::cout << "Server listening on port 8080...\n";
     char* buffer = new char[BUF_SIZE];
-    while (true){
-        Client client;
-        client.connectToServer(server.get_fd());
-        server.handleClient(
-            client.get_fd(),
-            buffer
+    while (true) {
+        int client_fd = accept(
+            server.get_fd(),
+            nullptr,
+            nullptr
         );
-        close(client.get_fd());
+        if (client_fd < 0) {
+            log("Accept Failed");
+            continue;
+        }
+        std::thread([client_fd]() {
+            char buffer[BUF_SIZE];
+            ssize_t bytes = recv(client_fd, buffer, BUF_SIZE - 1, 0);
+            if (bytes <= 0) {
+                std::cout << "recv failed\n";
+                close(client_fd);
+                return;
+            }
+            buffer[bytes] = '\0';
+            std::cout << "REQUEST:\n" << buffer << '\n';
+            Message* client_request = parse(buffer);
+            std::string response =
+                "HTTP/1.1 400 Bad Request\r\n"
+                "Content-Type: text/plain\r\n"
+                "Content-Length: 7\r\n"
+                "Connection: close\r\n"
+                "\r\n"
+                "DEFAULT";
+            if (client_request && client_request->type == "GET") {
+                response = generate_response(client_request);
+            }
+            send(client_fd, response.c_str(), response.size(), 0);
+            delete client_request;
+            close(client_fd);
+        }).detach();
     }
     delete[] buffer;
     close(server.get_fd());
     return 0;
 }
+
