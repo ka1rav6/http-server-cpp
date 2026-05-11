@@ -11,6 +11,7 @@
 
 // CUSTOM HEADERS
 #include "../include/requests_parser.h"
+#include "../include/response_gen.h"
 
 #define BUF_SIZE 4096
 // main text map:
@@ -37,7 +38,6 @@ class Server{
                 exit(EXIT_FAILURE);
             }
         }
-
         void configureSocket(){
             memset(&this->addr, 0, sizeof(this->addr));
             this->addr.sin_family = AF_INET;
@@ -110,27 +110,8 @@ class Server{
         "Connection: close\r\n"
         "\r\n"
         "DEFAULT";
-
-    if (client_request->file == "/" && client_request->type == "GET"){
-        std::string body = "Hi. This is a server!";
-
-        response =
-            "HTTP/1.1 200 OK\r\n"
-            "Content-Type: text/plain\r\n"
-            "Content-Length: "+ std::to_string(body.size()) + "\r\n"
-            "Connection: close\r\n"
-            "\r\n"+
-            body;
-    }
-    if (client_request->file != "/" && client_request->type == "GET"){
-        std::string body = "Could not find what you were looking for";
-        response = 
-            "HTTP/1.1 404 Not Found\r\n"
-            "Content-Type: text/plain\r\n"
-            "Content-Length: "+ std::to_string(body.size()) + "\r\n"
-            "\r\n" +
-            body;
-            
+    if (client_request->type == "GET"){
+        response = generate_response(client_request);
     }
     ssize_t sent = send(
         client_fd,
@@ -138,7 +119,6 @@ class Server{
         response.size(),
         0
     );
-
     std::cout << "BYTES SENT: "
               << sent
               << '\n';
@@ -151,7 +131,6 @@ class Client{
         int fd;
         struct sockaddr_in addr;
         socklen_t len;
-
     public:
         Client(){
             memset(&this->addr, 0, sizeof(this->addr));
@@ -174,30 +153,20 @@ class Client{
 
 int main(){
     Server server;
-
     server.init();
     server.listen(5);
-
     std::cout << "Server listening on port 8080...\n";
-
     char* buffer = new char[BUF_SIZE];
-
     while (true){
         Client client;
-
         client.connectToServer(server.get_fd());
-
         server.handleClient(
             client.get_fd(),
             buffer
         );
-
         close(client.get_fd());
     }
-
     delete[] buffer;
-
     close(server.get_fd());
-
     return 0;
 }

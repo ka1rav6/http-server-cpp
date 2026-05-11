@@ -3,6 +3,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/server.dir/src/HTTP_server.cpp.o.d"
   "CMakeFiles/server.dir/src/requests_parser.cpp.o"
   "CMakeFiles/server.dir/src/requests_parser.cpp.o.d"
+  "CMakeFiles/server.dir/src/response_gen.cpp.o"
+  "CMakeFiles/server.dir/src/response_gen.cpp.o.d"
   "server"
   "server.pdb"
 )

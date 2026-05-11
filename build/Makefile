@@ -177,6 +177,30 @@ src/requests_parser.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/src/requests_parser.cpp.s
 .PHONY : src/requests_parser.cpp.s
 
+src/response_gen.o: src/response_gen.cpp.o
+.PHONY : src/response_gen.o
+
+# target to build an object file
+src/response_gen.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/src/response_gen.cpp.o
+.PHONY : src/response_gen.cpp.o
+
+src/response_gen.i: src/response_gen.cpp.i
+.PHONY : src/response_gen.i
+
+# target to preprocess a source file
+src/response_gen.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/src/response_gen.cpp.i
+.PHONY : src/response_gen.cpp.i
+
+src/response_gen.s: src/response_gen.cpp.s
+.PHONY : src/response_gen.s
+
+# target to generate assembly for a file
+src/response_gen.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/src/response_gen.cpp.s
+.PHONY : src/response_gen.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -192,6 +216,9 @@ help:
 	@echo "... src/requests_parser.o"
 	@echo "... src/requests_parser.i"
 	@echo "... src/requests_parser.s"
+	@echo "... src/response_gen.o"
+	@echo "... src/response_gen.i"
+	@echo "... src/response_gen.s"
 .PHONY : help
 
 
