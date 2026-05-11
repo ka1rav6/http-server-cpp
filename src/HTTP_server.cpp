@@ -161,7 +161,7 @@ int main(){
                 response = generate_response(client_request);
             }
             send(client_fd, response.c_str(), response.size(), 0);
-            delete client_request;
+            destroy(client_request);
             close(client_fd);
         }).detach();
     }
